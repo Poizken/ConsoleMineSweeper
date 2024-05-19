@@ -1,0 +1,8 @@
+.vs
+*.exe
+multilingual.cpp
+.vscode
+/out
+/build
+CMakeSettings.json
+CMakeUserPresets.json
