@@ -1,4 +1,5 @@
 #include "Menu.h"
+#include "Game/Game.h"
 
 //this needs to be refactored
 
@@ -37,9 +38,9 @@ void display_map(WINDOW* win, MineSweeper::CellMap map, int y_offset, int x_offs
 
 void difficulty_menu(WINDOW* win) {
 	std::vector<std::string> options = { "Easy", "Medium", "Hard", "Back to menu"};
-
 	int active_option = 0;
 	int key;
+
 	while (1) {
 		wclear(win);
 		box(win, 0, 0);
@@ -57,7 +58,7 @@ void difficulty_menu(WINDOW* win) {
 		case 10:
 			if (active_option < 3) game(win, active_option);
 			else main_menu(win);
-			break;
+			return;
 		}
 	}
 
@@ -73,12 +74,12 @@ void about(WINDOW* win) {
 	mvwprintw(win, 6, 1, "Press any key to continue..");
 	wgetch(win);
 	main_menu(win);
+	return;
 }
 
 void main_menu(WINDOW* win) {
 	std::vector<std::string> options = { "Start the game", "About", "Exit" };
 	int active_option = 0;
-
 	int key;
 
 	while (1) {
@@ -99,31 +100,24 @@ void main_menu(WINDOW* win) {
 				switch (active_option) {
 					case 0:
 						difficulty_menu(win);
-						break;
+						return;
 					case 1:
 						about(win);
-						break;
+						return;
 					case 2:
 						return;
 				}
 		}
 	}
-
-	return;
 }
 
 void game(WINDOW* win, int difficulty) {
-	wclear(win);
-	box(win, 0, 0);
-
 	int map_width;
 	int map_height;
+	int mines;
+
 	int active_cell_x = 0;
 	int active_cell_y = 0;
-	int mines;
-	bool first_cell = true;
-	
-	int cells_to_open;
 
 	switch (difficulty) {
 	case 0:
@@ -141,21 +135,30 @@ void game(WINDOW* win, int difficulty) {
 		break;
 	}
 
-	MineSweeper::CellMap map(map_width, map_height);
-	cells_to_open = map_width * map_height - mines;
+	Game::Game minesweeper = Game::Game(map_width, map_height, mines);
 
 	int key;
+
 	while (1) {
 		wclear(win);
 		box(win, 0, 0);
-		display_map(win, map, 1, 1, active_cell_x, active_cell_y);
-		if (cells_to_open == 0) {
-			mvwprintw(win, map_height + 5, 1, "You won! Yaay!");
-			mvwprintw(win, map_height + 6, 1, "Press any key to continue.");
-			wgetch(win);
-			difficulty_menu(win);
+		display_map(win, minesweeper.get_map() , 1, 1, active_cell_x, active_cell_y);
+		switch (minesweeper.status()) {
+			case Game::GameStatus::WIN:
+				mvwprintw(win, map_height + 5, 1, "You won! Yaay!");
+				mvwprintw(win, map_height + 6, 1, "Press any key to continue.");
+				wgetch(win);
+				difficulty_menu(win);
+				break;
+			case Game::GameStatus::LOSS:
+				mvwprintw(win, map_height + 5, 1, "You got exploded :P HAAAAA");
+				mvwprintw(win, map_height + 6, 1, "Press any key to continue.");
+				wgetch(win);
+				difficulty_menu(win);
+				break;
 		}
-		mvwprintw(win, map_height + 1, 1, "Cells left: %d", cells_to_open);
+
+		mvwprintw(win, map_height + 1, 1, "Cells left: %d", minesweeper.cells_left());
 		key = wgetch(win);
 
 		switch (key) {
@@ -178,39 +181,15 @@ void game(WINDOW* win, int difficulty) {
 			case 'e':
 			case 'E':
 			{
-				MineSweeper::Cell& cell = map.get_cell(active_cell_x, active_cell_y);
-
-				if (first_cell) {
-					map.get_cell(active_cell_x, active_cell_y).open();
-					map.plant_mines(mines);
-					cells_to_open -= map.open_recursively(active_cell_x, active_cell_y);
-					first_cell = false;
-				}
-				else if (cell.is_mined()) {
-					map.open_all();
-					display_map(win, map, 1, 1, active_cell_x, active_cell_y);
-					mvwprintw(win, map_height + 5, 1, "You got exploded :P HAAAAA");
-					wgetch(win);
-					difficulty_menu(win);
-				}
-
-				else if (!cell.is_flagged()) cells_to_open -= map.open_recursively(active_cell_x, active_cell_y);
+				minesweeper.open_cell(active_cell_x, active_cell_y);
 				break;
 			}
 			case 'q':
 			case 'Q':
 			{
-				MineSweeper::Cell& cell = map.get_cell(active_cell_x, active_cell_y);
-				
-				if (cell.is_flagged()) cell.deflag();
-				else cell.put_flag();
+				minesweeper.put_flag(active_cell_x, active_cell_y);
 				break;
 			}
 		}
 	}
-
-	map.plant_mines(mines);
-	display_map(win, map, 1, 1, active_cell_x, active_cell_y);
-	refresh();
-	wgetch(win);
 }

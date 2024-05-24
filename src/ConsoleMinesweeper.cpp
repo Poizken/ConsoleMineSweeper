@@ -4,7 +4,6 @@
 #include <ctime>
 #include <exception>
 #include <cursesw.h>
-#include <windows.h>
 #include "MineSweeper/Exceptions/MinesweeperException.h"
 #include "MineSweeper/Exceptions/CellOutOfRangeException.h"
 #include "MineSweeper/Cell.h"
